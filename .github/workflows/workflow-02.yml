@@ -1,0 +1,199 @@
+name: Test in different OS
+## The events
+on:
+  workflow_dispatch:
+    inputs:
+      include-MacOS-M1-M2:
+        description: 'Include macOS-(M1-M2)variations'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+  # push:
+  #   branches:
+  #     - main
+    # paths:
+    #   - requirements.txt
+
+jobs:
+  
+  Test_under_ubuntu:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-22.04, ubuntu-20.04] 
+        python-version: [3.11.3] 
+
+## The actions
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Create import_libraries_test.py from Notebooks 
+        run: |    
+          echo "<<<<<<< Search for *.ipynb files recursively in all folders >>>>>>"
+          chmod +x .github/workflows/REGX_test_import_libraries.sh
+          ./.github/workflows/REGX_test_import_libraries.sh
+          echo  "<<<<<<< Create import libraries from the Notebook run successfully  >>>>>>"
+
+      - name:  Install dependencies 
+        run: |
+          python --version
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip list
+          pip install -r requirements.txt
+          echo "<<<<<<< Install dependencies run successfully >>>>>>"
+
+      - name:  Test the import libraries
+        run: |
+          source .venv/bin/activate
+          ./.github/workflows/REGX_test_import_libraries.sh
+          echo "<<<<<<< Test the dependencies in the import libraries from the Notebook >>>>>>"
+          pip install pytest
+          pytest ./.github/workflows/testing/test_import_libraries.py
+          echo  "<<<<<<< Test_under_ubuntuOS run successfully  >>>>>>"
+
+
+  Test_under_windows:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-2022, windows-2019]
+        python-version: [3.11.3]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Create import_libraries_test.py from Notebooks 
+        shell: bash   
+        run: |    
+          echo "<<<<<<< Search for *.ipynb files recursively in all folders >>>>>>"
+          chmod +x .github/workflows/REGX_test_import_libraries.sh
+          ./.github/workflows/REGX_test_import_libraries.sh
+          echo  "<<<<<<< Create import libraries from the Notebook run successfully  >>>>>>"
+
+      - name:  Install dependencies 
+        shell: bash  
+        run: |
+          echo "Note: This code is intended to run under the Bash CLI, not PowerShell."
+          python --version
+          python -m venv .venv
+          source .venv/Scripts/activate
+          python -m pip install --upgrade pip
+          pip list
+          pip install -r requirements.txt
+          echo "<<<<<<< Install dependencies run successfully >>>>>>"
+
+      - name:  Test the import libraries
+        shell: bash  
+        run: |
+          echo "Note: This code is intended to run under the Bash CLI, not PowerShell."
+          source .venv/Scripts/activate
+          ./.github/workflows/REGX_test_import_libraries.sh
+          echo "<<<<<<< Test the dependencies in the import libraries from the Notebook >>>>>>"
+          pip install pytest
+          pytest ./.github/workflows/testing/test_import_libraries.py
+          echo  "<<<<<<< Test_under_ubuntuOS run successfully  >>>>>>"
+
+      
+
+  Test_under_macos:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest,macos-13]
+        python-version: [3.11.3] 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Create import_libraries_test.py from Notebooks 
+        run: |    
+            echo "<<<<<<< Search for *.ipynb files recursively in all folders >>>>>>"
+            chmod +x .github/workflows/REGX_test_import_libraries.sh
+            ./.github/workflows/REGX_test_import_libraries.sh
+            echo  "<<<<<<< Create import libraries from the Notebook run successfully  >>>>>>"
+
+      - name:  Install dependencies 
+        run: |
+          python --version
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip list
+          pip install -r requirements.txt
+          echo "<<<<<<< Install dependencies run successfully >>>>>>"
+
+      - name:  Test the import libraries
+        run: |
+          source .venv/bin/activate
+          ./.github/workflows/REGX_test_import_libraries.sh
+          echo "<<<<<<< Test the dependencies in the import libraries from the Notebook >>>>>>"
+          pip install pytest
+          pytest ./.github/workflows/testing/test_import_libraries.py
+          echo  "<<<<<<< Test_under_ubuntuOS run successfully  >>>>>>"
+          
+
+  Test_under_macos_M1-M2:
+    runs-on: ${{ matrix.os }}
+    if: github.event.inputs.include-MacOS-M1-M2 == 'true'
+    strategy:
+      matrix:
+        os: [macos-14] #[flyci-macos-large-latest-m1,flyci-macos-large-latest-m2] # Price on FlyC (https://github.com/apps/flyci-prod) (https://github.com/actions/runner-images)
+        python-version: [3.11.3]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+         
+      - name: Create import_libraries_test.py from Notebooks 
+        run: |    
+            echo "<<<<<<< Search for *.ipynb files recursively in all folders >>>>>>"
+            chmod +x .github/workflows/REGX_test_import_libraries.sh
+            ./.github/workflows/REGX_test_import_libraries.sh 
+            echo  "<<<<<<< Create import libraries from the Notebook run successfully  >>>>>>"
+
+      - name:  Install dependencies 
+        run: |
+          python --version
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip list
+          pip install -r requirements.txt
+          echo "<<<<<<< Install dependencies run successfully >>>>>>"
+
+      - name:  Test the import libraries
+        run: |
+          source .venv/bin/activate
+          ./.github/workflows/REGX_test_import_libraries.sh
+          echo "<<<<<<< Test the dependencies in the import libraries from the Notebook >>>>>>"
+          pip install pytest
+          pytest ./.github/workflows/testing/test_import_libraries.py
+          echo  "<<<<<<< Test_under_ubuntuOS run successfully  >>>>>>"
