@@ -1,4 +1,8 @@
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from IPython.display import display, Markdown
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,classification_report, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 def get_data():
     df = pd.read_csv('data/Train.csv')
@@ -7,24 +11,36 @@ def get_data():
     df.insert(4, 'target_aqi', 
             pd.cut(df['target'], 
                     bins=[0, 50, 100, 150, 200, 300, float('inf')],
-                    labels = [0, 1, 2, 3, 4, 5,]
-                #     labels = ['Good', 'Moderate', 'Unhealthy for Sensitive Groups', 'Unhealthy', 'Very Unhealthy', 'Hazardous']
+                    # labels = [0, 1, 2, 3, 4, 5,]
+                    labels = ['Good', 'Moderate', 'Unhealthy f. Sens. G.', 'Unhealthy', 'Very Unhealthy', 'Hazardous']
             )
     )
     df.insert(5, 'target_health', 
-            pd.cut(df['target'], bins=[0, 100, float('inf')], labels=[0, 1])
-        #     pd.cut(df['target'], bins=[0, 100, float('inf')], labels=['Healthy', 'Unhealthy'])
+            # pd.cut(df['target'], bins=[0, 100, float('inf')], labels=[0, 1])
+            pd.cut(df['target'], bins=[0, 100, float('inf')], labels=['Healthy', 'Unhealthy'])
     )
     return df
+
+
+def get_baseline_data(data, target_name, factorize_target=False, RSEED=42):
+    base_model_df = data[[target_name, 'Place_ID', 'day_of_year']]
+    base_model_enc = convert_to_categorical(base_model_df, 'Place_ID')
+    X = base_model_enc.drop([target_name], axis=1)
+    if factorize_target:
+        y_con, y_labels = pd.factorize(data[target_name])
+    else:
+        y_con = base_model_enc[target_name]
+    X_train, X_test, y_train, y_test = train_test_split(X, y_con, test_size=0.2, random_state=RSEED)
+    if factorize_target:
+        return X_train, X_test, y_train, y_test, y_labels
+    else: 
+        return X_train, X_test, y_train, y_test
+
     
 def convert_to_categorical(data, column_name):
     column = data.pop(column_name)
     dummies = pd.get_dummies(column, drop_first=True)
     return pd.concat([data, dummies], axis=1)
-    
-
-from IPython.display import display, Markdown, Latex
-from sklearn.metrics import mean_squared_error, accuracy_score, mean_absolute_error, r2_score, precision_score, recall_score, f1_score, roc_auc_score
 
 
 def check_regression(model, X_train, X_test, y_train, y_test):
@@ -38,25 +54,28 @@ def check_regression(model, X_train, X_test, y_train, y_test):
 |R² Score|{r2_score(y_test, y_pred_test):.2f}|{r2_score(y_train, y_pred_train):.2f}|
 """))
 
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-def check_classification(model, X_train, X_test, y_train, y_test):
+def check_classification(model, X_train, X_test, y_train, y_test, y_labels):
+
     y_pred = model.predict(X_test)
     y_pred_train = model.predict(X_train)
-    fig, ax = plt.subplots(nrows=1, ncols=2)
-    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d", ax=ax[0]);
-    sns.heatmap(confusion_matrix(y_train, y_pred_train), annot=True, fmt="d", ax=ax[1]);
 
-    # # Print accuracy of our model
-    # print(f"Accuracy {model_name}: {round(accuracy_score(y_actual, y_pred), 2)}")
-    # print("--------"*10)
+    print('--- Test data ---')
+    print(classification_report(y_test, y_pred, target_names=y_labels))
+    print('--- Train data ---')
+    print(classification_report(y_train, y_pred_train, target_names=y_labels))
 
-    # # Print classification report of our model
-    # print(classification_report(y_actual, y_pred))
-    # print("--------"*10)
-    # plt.showpass
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4))
+
+    axes[0].set_title('Test Data')
+    cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, display_labels=y_labels, values_format="d", cmap=plt.cm.Blues, ax=axes[0])
+    plt.xticks(rotation=30, ha='right')
+
+    axes[1].set_title('Train Data')
+    cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_train, y_train, display_labels=y_labels, cmap=plt.cm.Greens, ax=axes[1])
+
+    plt.xticks(rotation=30, ha='right')
+
 
 # Define model that selects and rename features
 def select_and_rename_columns(df, target_name):
