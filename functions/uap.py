@@ -39,7 +39,7 @@ def check_regression(model, X_train, X_test, y_train, y_test):
 """))
 
 from sklearn.metrics import confusion_matrix
-import matplot.pyplot as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 def check_classification(model, X_train, X_test, y_train, y_test):
