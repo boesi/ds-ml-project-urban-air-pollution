@@ -57,3 +57,37 @@ def check_classification(model, X_train, X_test, y_train, y_test):
     # print(classification_report(y_actual, y_pred))
     # print("--------"*10)
     # plt.showpass
+
+# Define model that selects and rename features
+def select_and_rename_columns(df, target_name):
+    """
+    Select desired features from the original DataFrame and rename them.
+
+    Parameters:
+    - df (pd.DataFrame): The original DataFrame
+    - Target_name (str): The name of the desired target column
+    Returns:
+    - pd.DataFrame: A new DataFrame with selected and renamed features
+    """
+    # Select the specified columns
+
+    columns_to_keep = [target_name, "L3_NO2_NO2_column_number_density", "L3_O3_O3_column_number_density", "L3_CO_CO_column_number_density",
+                       "L3_HCHO_tropospheric_HCHO_column_number_density", "L3_CLOUD_cloud_fraction", "L3_CLOUD_cloud_optical_depth",
+                       "L3_AER_AI_absorbing_aerosol_index", "L3_SO2_SO2_column_number_density"]
+    df_selected = df[columns_to_keep].copy()
+    
+    # Rename columns as decided
+    rename_dict = {
+    target_name: 'target',
+    'L3_NO2_NO2_column_number_density': 'NO2_conc',
+    'L3_O3_O3_column_number_density': 'O3_conc',
+    'L3_CO_CO_column_number_density': 'CO_conc',
+    'L3_HCHO_tropospheric_HCHO_column_number_density': 'FA_conc',
+    'L3_CLOUD_cloud_fraction': 'could_coverage',
+    'L3_CLOUD_cloud_optical_depth': 'could_density',
+    'L3_AER_AI_absorbing_aerosol_index': 'AAI',
+    'L3_SO2_SO2_column_number_density': 'SO2_conc'  
+                    }
+    df_selected.rename(columns=rename_dict, inplace=True)
+    
+    return df_selected
