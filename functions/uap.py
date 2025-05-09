@@ -72,7 +72,7 @@ def check_classification(model, X_train, X_test, y_train, y_test, y_labels):
     plt.xticks(rotation=30, ha='right')
 
     axes[1].set_title('Train Data')
-    cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_train, y_train, display_labels=y_labels, cmap=plt.cm.Greens, ax=axes[1])
+    cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_train, y_train, display_labels=y_labels, values_format="d", cmap=plt.cm.Greens, ax=axes[1])
 
     plt.xticks(rotation=30, ha='right')
 
@@ -90,23 +90,26 @@ def select_and_rename_columns(df, target_name):
     """
     # Select the specified columns
 
-    columns_to_keep = [target_name, "L3_NO2_NO2_column_number_density", "L3_O3_O3_column_number_density", "L3_CO_CO_column_number_density",
+    columns_to_keep = [target_name, "temperature_2m_above_ground", "specific_humidity_2m_above_ground", "L3_NO2_NO2_column_number_density", "L3_O3_O3_column_number_density", "L3_CO_CO_column_number_density",
                        "L3_HCHO_tropospheric_HCHO_column_number_density", "L3_CLOUD_cloud_fraction", "L3_CLOUD_cloud_optical_depth",
                        "L3_AER_AI_absorbing_aerosol_index", "L3_SO2_SO2_column_number_density"]
     df_selected = df[columns_to_keep].copy()
+    df_selected['windspeed'] = (df['u_component_of_wind_10m_above_ground'] ** 2 + df['v_component_of_wind_10m_above_ground'] ** 2) ** 0.5
     
     # Rename columns as decided
     rename_dict = {
-    target_name: 'target',
-    'L3_NO2_NO2_column_number_density': 'NO2_conc',
-    'L3_O3_O3_column_number_density': 'O3_conc',
-    'L3_CO_CO_column_number_density': 'CO_conc',
-    'L3_HCHO_tropospheric_HCHO_column_number_density': 'FA_conc',
-    'L3_CLOUD_cloud_fraction': 'could_coverage',
-    'L3_CLOUD_cloud_optical_depth': 'could_density',
-    'L3_AER_AI_absorbing_aerosol_index': 'AAI',
-    'L3_SO2_SO2_column_number_density': 'SO2_conc'  
-                    }
+            target_name: 'target',
+            'specific_humidity_2m_above_ground': 'specific_humidity',
+            'temperature_2m_above_ground': 'temperature',
+            'L3_NO2_NO2_column_number_density': 'NO2_conc',
+            'L3_O3_O3_column_number_density': 'O3_conc',
+            'L3_CO_CO_column_number_density': 'CO_conc',
+            'L3_HCHO_tropospheric_HCHO_column_number_density': 'FA_conc',
+            'L3_CLOUD_cloud_fraction': 'cloud_coverage',
+            'L3_CLOUD_cloud_optical_depth': 'cloud_density',
+            'L3_AER_AI_absorbing_aerosol_index': 'AAI',
+            'L3_SO2_SO2_column_number_density': 'SO2_conc'  
+    }
     df_selected.rename(columns=rename_dict, inplace=True)
     
     return df_selected
