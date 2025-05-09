@@ -67,14 +67,13 @@ def check_classification(model, X_train, X_test, y_train, y_test, y_labels):
 
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4))
 
-    axes[0].set_title('Test Data')
     cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, display_labels=y_labels, values_format="d", cmap=plt.cm.Blues, ax=axes[0])
-    plt.xticks(rotation=30, ha='right')
+    axes[0].set_title('Test Data')
+    axes[0].set_xticks(ticks=axes[0].get_xticks(), labels=axes[0].get_xticklabels(), rotation=30, ha='right')
 
-    axes[1].set_title('Train Data')
     cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_train, y_train, display_labels=y_labels, values_format="d", cmap=plt.cm.Greens, ax=axes[1])
-
-    plt.xticks(rotation=30, ha='right')
+    axes[1].set_title('Train Data')
+    axes[1].set_xticks(ticks=axes[1].get_xticks(), labels=axes[1].get_xticklabels(), rotation=30, ha='right')
 
 
 # Define model that selects and rename features
