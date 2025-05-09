@@ -1,4 +1,8 @@
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from IPython.display import display, Markdown
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,classification_report, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 def get_data():
     df = pd.read_csv('data/Train.csv')
@@ -7,24 +11,36 @@ def get_data():
     df.insert(4, 'target_aqi', 
             pd.cut(df['target'], 
                     bins=[0, 50, 100, 150, 200, 300, float('inf')],
-                    labels = [0, 1, 2, 3, 4, 5,]
-                #     labels = ['Good', 'Moderate', 'Unhealthy for Sensitive Groups', 'Unhealthy', 'Very Unhealthy', 'Hazardous']
+                    # labels = [0, 1, 2, 3, 4, 5,]
+                    labels = ['Good', 'Moderate', 'Unhealthy f. Sens. G.', 'Unhealthy', 'Very Unhealthy', 'Hazardous']
             )
     )
     df.insert(5, 'target_health', 
-            pd.cut(df['target'], bins=[0, 100, float('inf')], labels=[0, 1])
-        #     pd.cut(df['target'], bins=[0, 100, float('inf')], labels=['Healthy', 'Unhealthy'])
+            # pd.cut(df['target'], bins=[0, 100, float('inf')], labels=[0, 1])
+            pd.cut(df['target'], bins=[0, 100, float('inf')], labels=['Healthy', 'Unhealthy'])
     )
     return df
+
+
+def get_baseline_data(data, target_name, factorize_target=False, RSEED=42):
+    base_model_df = data[[target_name, 'Place_ID', 'day_of_year']]
+    base_model_enc = convert_to_categorical(base_model_df, 'Place_ID')
+    X = base_model_enc.drop([target_name], axis=1)
+    if factorize_target:
+        y_con, y_labels = pd.factorize(data[target_name])
+    else:
+        y_con = base_model_enc[target_name]
+    X_train, X_test, y_train, y_test = train_test_split(X, y_con, test_size=0.2, random_state=RSEED)
+    if factorize_target:
+        return X_train, X_test, y_train, y_test, y_labels
+    else: 
+        return X_train, X_test, y_train, y_test
+
     
 def convert_to_categorical(data, column_name):
     column = data.pop(column_name)
     dummies = pd.get_dummies(column, drop_first=True)
     return pd.concat([data, dummies], axis=1)
-    
-
-from IPython.display import display, Markdown, Latex
-from sklearn.metrics import mean_squared_error, accuracy_score, mean_absolute_error, r2_score, precision_score, recall_score, f1_score, roc_auc_score
 
 
 def check_regression(model, X_train, X_test, y_train, y_test):
@@ -38,11 +54,9 @@ def check_regression(model, X_train, X_test, y_train, y_test):
 |R² Score|{r2_score(y_test, y_pred_test):.2f}|{r2_score(y_train, y_pred_train):.2f}|
 """))
 
-from sklearn.metrics import confusion_matrix
-import matplot.pyplot as plt
-import seaborn as sns
 
-def check_classification(model, X_train, X_test, y_train, y_test):
+def check_classification(model, X_train, X_test, y_train, y_test, y_labels):
+
     y_pred = model.predict(X_test)
     y_pred_train = model.predict(X_train)
     fig, ax = plt.subplots(nrows=1, ncols=2)
@@ -57,6 +71,7 @@ def check_classification(model, X_train, X_test, y_train, y_test):
     # print(classification_report(y_actual, y_pred))
     # print("--------"*10)
     # plt.showpass
+
 
     print('--- Test data ---')
     print(classification_report(y_test, y_pred, target_names=y_labels))
@@ -74,8 +89,10 @@ def check_classification(model, X_train, X_test, y_train, y_test):
 
     plt.xticks(rotation=30, ha='right')
 
+
 # Define model that selects and rename features
 def select_and_rename_columns(df, target_name, debug = False):
+
     """
     Select desired features from the original DataFrame and rename them.
 
@@ -92,6 +109,7 @@ def select_and_rename_columns(df, target_name, debug = False):
                        "L3_AER_AI_absorbing_aerosol_index", "L3_SO2_SO2_column_number_density"]
     df_selected = df[columns_to_keep].copy()
 
+
     if debug:
         print(f"Debug: Selected columns: {df_selected.columns.tolist()}")
 
@@ -99,6 +117,7 @@ def select_and_rename_columns(df, target_name, debug = False):
     
     if debug:
         print(f"Debug: Added 'windspeed' column with {df_selected['windspeed'].isnull().sum()} missing values")
+
 
 
     # Rename columns as decided
@@ -116,7 +135,6 @@ def select_and_rename_columns(df, target_name, debug = False):
             'L3_SO2_SO2_column_number_density': 'SO2_conc'  
     }
     df_selected.rename(columns=rename_dict, inplace=True)
-
     if debug:
         print(f"Debug: Renamed columns: {list(rename_dict.values())}")
     
@@ -140,6 +158,5 @@ def select_and_rename_columns(df, target_name, debug = False):
             changed_rows = df_selected[changed_values]
             print(f"Debug: Changed values in column '{col}':")
             print(changed_rows[[col]])  # Print only the changed rows for clarity
-    
 
     return df_selected
