@@ -5,6 +5,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,cl
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def get_data():
     df = pd.read_csv('data/Train.csv')
     df['Date'] = pd.to_datetime(df['Date'])
