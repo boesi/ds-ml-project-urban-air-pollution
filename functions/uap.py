@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 from IPython.display import display, Markdown
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,classification_report, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
+import numpy as np
 
 def get_data():
     df = pd.read_csv('data/Train.csv')
@@ -49,9 +50,9 @@ def check_regression(model, X_train, X_test, y_train, y_test):
     display(Markdown(f"""
 |Score|Test|Train|
 |:--|--:|--:|
-|MAE|{mean_absolute_error(y_test, y_pred_test):.2f}|{mean_absolute_error(y_train, y_pred_train):.2f}|
-|MSE|{mean_squared_error(y_test, y_pred_test):.2f}|{mean_squared_error(y_train, y_pred_train):.2f}|
-|R² Score|{r2_score(y_test, y_pred_test):.2f}|{r2_score(y_train, y_pred_train):.2f}|
+|MAE|{mean_absolute_error(y_test, y_pred_test):.3f}|{mean_absolute_error(y_train, y_pred_train):.3f}|
+|MSE|{mean_squared_error(y_test, y_pred_test):.3f}|{mean_squared_error(y_train, y_pred_train):.3f}|
+|R² Score|{r2_score(y_test, y_pred_test):.3f}|{r2_score(y_train, y_pred_train):.3f}|
 """))
 
 
