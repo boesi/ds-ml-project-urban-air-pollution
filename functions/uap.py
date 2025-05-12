@@ -173,7 +173,9 @@ def select_and_rename_columns(df, target_name, debug = False, feateng=False):
             'SO2_conc_weighted',
             "cloud_coverage", 
             "cloud_density",
-            "AAI"            
+            "AAI",
+            'CO_conc',
+            'windspeed'            
             ]
         df_selected = df[columns_to_keep_feat].copy()
     
@@ -192,7 +194,8 @@ def select_and_rename_columns(df, target_name, debug = False, feateng=False):
             "cloud_coverage", 
             "cloud_density",
             "AAI", 
-            "SO2_conc"
+            "SO2_conc",
+            'windspeed'
         ]
         df_selected = df[columns_to_keep].copy()
 
