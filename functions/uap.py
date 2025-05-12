@@ -5,6 +5,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,cl
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def get_data():
     df = pd.read_csv('data/Train.csv')
     df['Date'] = pd.to_datetime(df['Date'])
@@ -169,7 +170,7 @@ def check_classification(model, X_train, X_test, y_train, y_test, y_labels, trai
 
 
 # Define model that selects and rename features
-def select_and_rename_columns(df, target_name, debug = False):
+def select_and_rename_columns(df, target_name, debug = False, feateng=False):
     """
     Select desired features from the original DataFrame and rename them.
 
@@ -179,22 +180,18 @@ def select_and_rename_columns(df, target_name, debug = False):
     Returns:
     - pd.DataFrame: A new DataFrame with selected and renamed features
     """
-    # Select the specified columns
 
-    columns_to_keep = [target_name, "temperature_2m_above_ground", "specific_humidity_2m_above_ground", "L3_NO2_NO2_column_number_density", "L3_O3_O3_column_number_density", "L3_CO_CO_column_number_density",
-                       "L3_HCHO_tropospheric_HCHO_column_number_density", "L3_CLOUD_cloud_fraction", "L3_CLOUD_cloud_optical_depth",
-                       "L3_AER_AI_absorbing_aerosol_index", "L3_SO2_SO2_column_number_density"]
-    df_selected = df[columns_to_keep].copy()
 
-    if debug:
-        print(f"Debug: Selected columns: {df_selected.columns.tolist()}")
-
-    df_selected['windspeed'] = (df['u_component_of_wind_10m_above_ground'] ** 2 + df['v_component_of_wind_10m_above_ground'] ** 2) ** 0.5
+    df['windspeed'] = (df['u_component_of_wind_10m_above_ground'] ** 2 + df['v_component_of_wind_10m_above_ground'] ** 2) ** 0.5
     
     if debug:
-        print(f"Debug: Added 'windspeed' column with {df_selected['windspeed'].isnull().sum()} missing values")
+        print(f"Debug: Added 'windspeed' column with {df['windspeed'].isnull().sum()} missing values")
 
-
+    if target_name != 'target' and 'target' in df.columns:
+        if debug:
+            print(f"Debug: Dropping original 'target' column to avoid duplication.")
+        df.drop(columns=['target'], inplace=True)
+    
     # Rename columns as decided
     rename_dict = {
             target_name: 'target',
@@ -207,9 +204,10 @@ def select_and_rename_columns(df, target_name, debug = False):
             'L3_CLOUD_cloud_fraction': 'cloud_coverage',
             'L3_CLOUD_cloud_optical_depth': 'cloud_density',
             'L3_AER_AI_absorbing_aerosol_index': 'AAI',
-            'L3_SO2_SO2_column_number_density': 'SO2_conc'  
-    }
-    df_selected.rename(columns=rename_dict, inplace=True)
+            'L3_SO2_SO2_column_number_density': 'SO2_conc'
+            }
+    
+    df.rename(columns=rename_dict, inplace=True)
 
     if debug:
         print(f"Debug: Renamed columns: {list(rename_dict.values())}")
@@ -227,13 +225,74 @@ def select_and_rename_columns(df, target_name, debug = False):
     }
     for col in columns_to_check:
         lb, ub = ranges[col]
-        old_values = df_selected[col].copy()
-        df_selected[col] = df_selected[col].where((df_selected[col] >= lb) & (df_selected[col] <= ub), np.nan)
-        changed_values = old_values != df_selected[col]    
+        old_values = df[col].copy()
+        df[col] = df[col].where((df[col] >= lb) & (df[col] <= ub), np.nan)
+        changed_values = old_values != df[col]    
         if debug and changed_values.any():
-            changed_rows = df_selected[changed_values]
+            changed_rows = df[changed_values]
             print(f"Debug: Changed values in column '{col}':")
             print(changed_rows[[col]])  # Print only the changed rows for clarity
     
+    if feateng:
+        """
+        Perform feature engineering on Dataframe.
+        Has to be performed before 'select_and_rename_columns' functions.
 
+        Input: pd.DataFrame
+        Output: DataFrame with transformed features
+        """
+
+        gas_map = {
+        'NO2': 'NO2_conc',
+        'O3':  'O3_conc',
+        'HCHO': 'FA_conc',
+        'SO2': 'SO2_conc'
+        }
+
+        for gas, gas_col in gas_map.items():
+            cloud_col = f"L3_{gas}_cloud_fraction"
+            new_col = f"{gas_col}_weighted"
+            df[new_col] = df[gas_col] * (1.0 - df[cloud_col])
+
+        columns_to_keep_feat = [
+            'target', 
+            "temperature", 
+            "specific_humidity", 
+            'NO2_conc_weighted',
+            'O3_conc_weighted', 
+            'FA_conc_weighted', 
+            'SO2_conc_weighted',
+            "cloud_coverage", 
+            "cloud_density",
+            "AAI",
+            'CO_conc',
+            'windspeed'            
+            ]
+        df_selected = df[columns_to_keep_feat].copy()
+    
+
+    else:
+    # Select the specified columns
+
+        columns_to_keep = [
+            'target', 
+            "temperature", 
+            "specific_humidity", 
+            "NO2_conc",
+            "O3_conc",
+            "CO_conc",
+            "FA_conc",
+            "cloud_coverage", 
+            "cloud_density",
+            "AAI", 
+            "SO2_conc",
+            'windspeed'
+        ]
+        df_selected = df[columns_to_keep].copy()
+
+        if debug:
+            print(f"Debug: Selected columns: {df_selected.columns.tolist()}")
+    
     return df_selected
+
+
