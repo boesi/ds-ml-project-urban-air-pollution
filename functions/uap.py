@@ -9,18 +9,60 @@ def get_data():
     df = pd.read_csv('data/Train.csv')
     df['Date'] = pd.to_datetime(df['Date'])
     df['day_of_year'] = df['Date'].dt.dayofyear
-    df.insert(4, 'target_aqi', 
-            pd.cut(df['target'], 
-                    bins=[0, 50, 100, 150, 200, 300, float('inf')],
-                    # labels = [0, 1, 2, 3, 4, 5,]
-                    labels = ['Good', 'Moderate', 'Unhealthy f. Sens. G.', 'Unhealthy', 'Very Unhealthy', 'Hazardous']
-            )
-    )
-    df.insert(5, 'target_health', 
-            # pd.cut(df['target'], bins=[0, 100, float('inf')], labels=[0, 1])
-            pd.cut(df['target'], bins=[0, 100, float('inf')], labels=['Healthy', 'Unhealthy'])
-    )
+    df.insert(4, 'target_aqi', create_bins(df['target'], 'aqi'))
+    df.insert(5, 'target_health', create_bins(df['target'], 'health'))
     return df
+
+def create_bins(data, type):
+    """
+    Create categorical bins from continuous air quality data.
+
+    Parameters
+    ----------
+    data : array-like
+        Input array-like object to be binned. Must be 1-dimensional and 
+        contain numeric data compatible with pandas.cut (int, float) 
+    type : str
+        Type of binning to perform:
+        - 'aqi': Creates 6 air quality categories based on EPA standards
+        - 'health': Creates binary health categories (Healthy/Unhealthy)
+
+    Returns
+    -------
+    pandas.Series
+        Categorical data with labels based on the specified type:
+        For 'aqi': ['Good', 'Moderate', 'Unhealthy f. Sens. G.', 
+                    'Unhealthy', 'Very Unhealthy', 'Hazardous']
+        For 'health': ['Healthy', 'Unhealthy']
+
+    Notes
+    -----
+    AQI categories follow EPA breakpoints:
+    - Good: 0-50
+    - Moderate: 51-100
+    - Unhealthy for Sensitive Groups: 101-150
+    - Unhealthy: 151-200
+    - Very Unhealthy: 201-300
+    - Hazardous: >300
+
+    Health categories use a simple binary split at AQI 100.
+
+    References
+    ----------
+    .. [1] EPA AQI Technical Documentation:
+           https://www.airnow.gov/sites/default/files/2020-05/aqi-technical-assistance-document-sept2018.pdf
+    """
+    labels = get_bin_labels(type)
+    if type == 'aqi':
+        return pd.cut(data, bins=[0, 50, 100, 150, 200, 300, float('inf')], labels = labels)
+    elif type == 'health':
+        return pd.cut(data, bins=[0, 100, float('inf')], labels=labels)
+
+def get_bin_labels(type):
+    if type == 'aqi':
+        return ['Good', 'Moderate', 'Unhealthy f. Sens. G.', 'Unhealthy', 'Very Unhealthy', 'Hazardous']
+    elif type == 'health':
+        return ['Healthy', 'Unhealthy']
 
 
 def get_baseline_data(data, target_name, factorize_target=False, RSEED=42):
@@ -44,7 +86,7 @@ def convert_to_categorical(data, column_name):
     return pd.concat([data, dummies], axis=1)
 
 
-def check_regression(model, X_train, X_test, y_train, y_test):
+def check_regression(model, X_train, X_test, y_train, y_test, with_regression=False):
     y_pred_test = model.predict(X_test)
     y_pred_train = model.predict(X_train)
     display(Markdown(f"""
@@ -54,27 +96,76 @@ def check_regression(model, X_train, X_test, y_train, y_test):
 |MSE|{mean_squared_error(y_test, y_pred_test):.3f}|{mean_squared_error(y_train, y_pred_train):.3f}|
 |R² Score|{r2_score(y_test, y_pred_test):.3f}|{r2_score(y_train, y_pred_train):.3f}|
 """))
+    if with_regression:
+        check_classification_for_regression(model, X_train, X_test, y_train, y_test, 'aqi')
+        check_classification_for_regression(model, X_train, X_test, y_train, y_test, 'health')
 
 
-def check_classification(model, X_train, X_test, y_train, y_test, y_labels):
-
+def check_classification_for_regression(model, X_train, X_test, y_train, y_test, y_labels):
     y_pred = model.predict(X_test)
     y_pred_train = model.predict(X_train)
+    
+    if type(y_labels) == str:
+        bin_type = y_labels
+        y_test, y_labels = pd.factorize(create_bins(y_test, bin_type), sort=True)
+        y_train, y_labels_train = pd.factorize(create_bins(y_train, bin_type), sort=True)
+        print('y_pred: ', y_pred)
+        print('bins: ', create_bins(y_pred, bin_type))
+        y_pred, y_labels_pred = pd.factorize(create_bins(y_pred, bin_type), sort=True)
+        y_pred_train, y_labels_pred_train = pd.factorize(create_bins(y_pred_train, bin_type), sort=True)
 
     print('--- Test data ---')
-    print(classification_report(y_test, y_pred, target_names=y_labels))
+    print('Labels')
+    print(f'\ty_labels: {y_labels}\n\ty_labels_train: {y_labels_train}\n\ty_labels_pred: {y_labels_pred}\n\ty_labels_pred_train: {y_labels_pred_train}')
+    print('Unique')
+    print(f'\ty_pred.unique: {np.unique(y_pred)}\n\ty_train.unique: {np.unique(y_train)}\n\ty_test.unique: {np.unique(y_test)}\n\ty_train.unique: {np.unique(y_train)}')
+    # print(classification_report(y_test, y_pred, target_names=y_labels))
+    print(classification_report(y_test, y_pred))
     print('--- Train data ---')
-    print(classification_report(y_train, y_pred_train, target_names=y_labels))
+    # print(classification_report(y_train, y_pred_train, target_names=y_labels))
+    print(classification_report(y_train, y_pred_train))
 
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 4))
 
-    cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, display_labels=y_labels, values_format="d", cmap=plt.cm.Blues, ax=axes[0])
+    # cmd_test = ConfusionMatrixDisplay.from_predictions(y_test, y_pred, display_labels=y_labels, values_format="d", cmap=plt.cm.Blues, ax=axes[0])
+    cmd_test = ConfusionMatrixDisplay.from_predictions(y_test, y_pred, values_format="d", cmap=plt.cm.Blues, ax=axes[0])
     axes[0].set_title('Test Data')
     axes[0].set_xticks(ticks=axes[0].get_xticks(), labels=axes[0].get_xticklabels(), rotation=30, ha='right')
 
-    cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_train, y_train, display_labels=y_labels, values_format="d", cmap=plt.cm.Greens, ax=axes[1])
+    cmd_test = ConfusionMatrixDisplay.from_predictions(y_train, y_pred_train, display_labels=y_labels, values_format="d", cmap=plt.cm.Greens, ax=axes[1])
     axes[1].set_title('Train Data')
     axes[1].set_xticks(ticks=axes[1].get_xticks(), labels=axes[1].get_xticklabels(), rotation=30, ha='right')
+
+
+def check_classification(model, X_train, X_test, y_train, y_test, y_labels, train=True, test=True):
+    y_pred = model.predict(X_test)
+    y_pred_train = model.predict(X_train)
+    
+    if test:
+        print('--- Test data ---')
+        print(classification_report(y_test, y_pred, target_names=y_labels))
+    if train:
+        print('--- Train data ---')
+        print(classification_report(y_train, y_pred_train, target_names=y_labels))
+
+    fig, axes = plt.subplots(nrows=1, ncols=train+test, figsize=((train+test) * 6, 4))
+    fig.patch.set_alpha(0.0)
+
+    # plt.subplots returns a list, if there is more than one ax
+    if not isinstance(axes, (list, np.ndarray)): axes = [axes]
+    ax_index = 0
+    if test:
+        cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, display_labels=y_labels, values_format="d", cmap=plt.cm.Blues, ax=axes[ax_index])
+        axes[ax_index].set_title('Test Data')
+        axes[ax_index].set_xticks(ticks=axes[0].get_xticks(), labels=axes[0].get_xticklabels(), rotation=30, ha='right')
+        ax_index += 1
+
+    if train:
+        cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_train, y_train, display_labels=y_labels, values_format="d", cmap=plt.cm.Greens, ax=axes[ax_index])
+        axes[ax_index].set_title('Train Data')
+        axes[ax_index].set_xticks(ticks=axes[1].get_xticks(), labels=axes[1].get_xticklabels(), rotation=30, ha='right')
+    
+    return fig
 
 
 # Define model that selects and rename features
