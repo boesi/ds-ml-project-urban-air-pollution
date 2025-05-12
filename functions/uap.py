@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 from IPython.display import display, Markdown
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,classification_report, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
+import numpy as np
 
 def get_data():
     df = pd.read_csv('data/Train.csv')
