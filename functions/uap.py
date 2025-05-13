@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from IPython.display import display, Markdown
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,classification_report, ConfusionMatrixDisplay
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score,classification_report, ConfusionMatrixDisplay, f1_score
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -145,10 +145,12 @@ def check_classification(model, X_train, X_test, y_train, y_test, y_labels, trai
     
     if test:
         print('--- Test data ---')
-        print(classification_report(y_test, y_pred, target_names=y_labels))
+        print(f'F1 Micro: {f1_score(y_test, y_pred, average="micro"):.3f}')
+        print(classification_report(y_test, y_pred, target_names=y_labels, digits=3))
     if train:
         print('--- Train data ---')
-        print(classification_report(y_train, y_pred_train, target_names=y_labels))
+        print(f'F1 Micro: {f1_score(y_train, y_pred_train, average="micro"):.3f}')
+        print(classification_report(y_train, y_pred_train, target_names=y_labels, digits=3))
 
     fig, axes = plt.subplots(nrows=1, ncols=train+test, figsize=((train+test) * 6, 4))
     fig.patch.set_alpha(0.0)
@@ -159,7 +161,7 @@ def check_classification(model, X_train, X_test, y_train, y_test, y_labels, trai
     if test:
         cmd_test = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test, display_labels=y_labels, values_format="d", cmap=plt.cm.Blues, ax=axes[ax_index])
         axes[ax_index].set_title('Test Data')
-        axes[ax_index].set_xticks(ticks=axes[0].get_xticks(), labels=axes[0].get_xticklabels(), rotation=30, ha='right')
+        # axes[ax_index].set_xticks(ticks=axes[0].get_xticks(), labels=axes[0].get_xticklabels(), rotation=30, ha='right')
         ax_index += 1
 
     if train:
@@ -263,14 +265,14 @@ def select_and_rename_columns(df, target_name, debug = False, feateng=False, fea
             df[new_col] = df[gas_col] * (1.0 - df[cloud_col])
     
     if keep_all_feeatures:
-        columns_to_not_keep = [col for col in df.columns if col.startswith('target') and col != target_name]
+        columns_to_not_keep = [col for col in df.columns if col.startswith('target') and col != 'target']
         columns_to_not_keep.extend(['Date', 'Place_ID', 'Place_ID X Date'])
             
         df_selected = df.drop(columns_to_not_keep, axis=1)
     else:
         print(df.columns)
         columns_to_keep = [
-            target_name, 
+            'target', 
             "temperature", 
             "specific_humidity", 
             'NO2_conc_weighted',
