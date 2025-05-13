@@ -79,7 +79,7 @@ def check_classification(model, X_train, X_test, y_train, y_test, y_labels):
 
 
 # Define model that selects and rename features
-def select_and_rename_columns(df, target_name, debug = False, feateng=False):
+def select_and_rename_columns(df, target_name, debug = False, feateng=False, feat_dates=False, keep_all_feeatures=False, check_validity=True):
     """
     Select desired features from the original DataFrame and rename them.
 
@@ -92,6 +92,12 @@ def select_and_rename_columns(df, target_name, debug = False, feateng=False):
 
 
     df['windspeed'] = (df['u_component_of_wind_10m_above_ground'] ** 2 + df['v_component_of_wind_10m_above_ground'] ** 2) ** 0.5
+    if feat_dates:
+        df['Month'] = df['Date'].dt.month
+        df['Day'] = df['Date'].dt.day
+        df['Dayofweek'] = df['Date'].dt.dayofweek
+        # df['DayOfyear'] = df['Date'].dt.dayofyear
+        df['WeekOfyear'] = df['Date'].dt.isocalendar().week
     
     if debug:
         print(f"Debug: Added 'windspeed' column with {df['windspeed'].isnull().sum()} missing values")
@@ -120,27 +126,28 @@ def select_and_rename_columns(df, target_name, debug = False, feateng=False):
 
     if debug:
         print(f"Debug: Renamed columns: {list(rename_dict.values())}")
-    
-    # Check if values are within documented ranges and assign NaN if not
-    columns_to_check = ['NO2_conc', 'O3_conc','CO_conc', 'FA_conc', 'cloud_density', 'AAI', 'SO2_conc']
-    ranges = {
-        'NO2_conc': (-0.00051, 0.0192),
-        'O3_conc': (0.025, 0.3048),
-        'CO_conc': ( -34.43, 5.71),
-        'FA_conc': (-0.0172,  0.0074),
-        'cloud_density': (1, 250),
-        'AAI': (-21, 39),
-        'SO2_conc': (-0.4051, 0.2079)
-    }
-    for col in columns_to_check:
-        lb, ub = ranges[col]
-        old_values = df[col].copy()
-        df[col] = df[col].where((df[col] >= lb) & (df[col] <= ub), np.nan)
-        changed_values = old_values != df[col]    
-        if debug and changed_values.any():
-            changed_rows = df[changed_values]
-            print(f"Debug: Changed values in column '{col}':")
-            print(changed_rows[[col]])  # Print only the changed rows for clarity
+
+    if check_validity:
+        # Check if values are within documented ranges and assign NaN if not
+        columns_to_check = ['NO2_conc', 'O3_conc','CO_conc', 'FA_conc', 'cloud_density', 'AAI', 'SO2_conc']
+        ranges = {
+            'NO2_conc': (-0.00051, 0.0192),
+            'O3_conc': (0.025, 0.3048),
+            'CO_conc': ( -34.43, 5.71),
+            'FA_conc': (-0.0172,  0.0074),
+            'cloud_density': (1, 250),
+            'AAI': (-21, 39),
+            'SO2_conc': (-0.4051, 0.2079)
+        }
+        for col in columns_to_check:
+            lb, ub = ranges[col]
+            old_values = df[col].copy()
+            df[col] = df[col].where((df[col] >= lb) & (df[col] <= ub), np.nan)
+            changed_values = old_values != df[col]    
+            if debug and changed_values.any():
+                changed_rows = df[changed_values]
+                print(f"Debug: Changed values in column '{col}':")
+                print(changed_rows[[col]])  # Print only the changed rows for clarity
     
     if feateng:
         """
@@ -162,9 +169,17 @@ def select_and_rename_columns(df, target_name, debug = False, feateng=False):
             cloud_col = f"L3_{gas}_cloud_fraction"
             new_col = f"{gas_col}_weighted"
             df[new_col] = df[gas_col] * (1.0 - df[cloud_col])
-
-        columns_to_keep_feat = [
-            'target', 
+    
+    if keep_all_feeatures:
+        #columns_to_not_keep = [col for col in df.columns if col.startswith('target') and col != target_name]
+        columns_to_not_keep = [col for col in df.columns if col.startswith('target') and col != 'target']
+        columns_to_not_keep.extend(['Date', 'Place_ID', 'Place_ID X Date'])
+            
+        df_selected = df.drop(columns_to_not_keep, axis=1)
+    else:
+        print(df.columns)
+        columns_to_keep = [
+            target_name, 
             "temperature", 
             "specific_humidity", 
             'NO2_conc_weighted',
@@ -175,32 +190,12 @@ def select_and_rename_columns(df, target_name, debug = False, feateng=False):
             "cloud_density",
             "AAI",
             'CO_conc',
-            'windspeed'            
-            ]
-        df_selected = df[columns_to_keep_feat].copy()
-    
-
-    else:
-    # Select the specified columns
-
-        columns_to_keep = [
-            'target', 
-            "temperature", 
-            "specific_humidity", 
-            "NO2_conc",
-            "O3_conc",
-            "CO_conc",
-            "FA_conc",
-            "cloud_coverage", 
-            "cloud_density",
-            "AAI", 
-            "SO2_conc",
             'windspeed'
-        ]
+            ]
         df_selected = df[columns_to_keep].copy()
 
-        if debug:
-            print(f"Debug: Selected columns: {df_selected.columns.tolist()}")
+    if debug:
+        print(f"Debug: Selected columns: {df_selected.columns.tolist()}")
     
     return df_selected
 
